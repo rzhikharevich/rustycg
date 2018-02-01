@@ -1,0 +1,8 @@
+[package]
+name = "rustycg"
+version = "0.1.0"
+authors = ["Roman Zhikharevich <rzhikharevich@gmail.com>"]
+
+[dependencies.sdl2]
+version = "0.31"
+default-features = false
