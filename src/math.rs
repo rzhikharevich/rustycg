@@ -2,9 +2,9 @@ use std::ops::{Add, Sub, Mul};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Vector {
-	x: f64,
-	y: f64,
-	z: f64,
+	pub x: f64,
+	pub y: f64,
+	pub z: f64,
 }
 
 impl Vector {
@@ -16,8 +16,16 @@ impl Vector {
 		self.x + self.y + self.z
 	}
 	
+	pub fn emul(self, v: Vector) -> Vector {
+		Vector {
+			x: self.x * v.x,
+			y: self.y * v.y,
+			z: self.z * v.z,
+		}
+	}
+	
 	pub fn smul(self, v: Vector) -> f64 {
-		(self * v).sum()
+		self.emul(v).sum()
 	}
 	
 	pub fn len2(self) -> f64 {
@@ -62,17 +70,33 @@ impl Mul for Vector {
 	
 	fn mul(self, v: Vector) -> Vector {
 		Vector {
-			x: self.x * v.x,
-			y: self.y * v.y,
-			z: self.z * v.z,
+			x: self.y * v.z - self.z * v.y,
+			y: self.z * v.x - self.x * v.z,
+			z: self.x * v.y - self.y * v.x,
 		}
 	}
 }
 
+impl Mul<f64> for Vector {
+	type Output = Vector;
+	
+	fn mul(self, k: f64) -> Vector {
+		Vector {
+			x: k * self.x,
+			y: k * self.y,
+			z: k * self.z,
+		}
+	}
+}
+
+pub trait Tracer {
+	fn trace(&self, src: Vector, ray: Vector) -> Option<Vector>;
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct Sphere {
-	center: Vector,
-	radius: f64,
+	pub center: Vector,
+	pub radius: f64,
 }
 
 impl Sphere {
@@ -82,8 +106,10 @@ impl Sphere {
 			radius: radius,
 		}
 	}
-	
-	pub fn trace(self, src: Vector, ray: Vector) -> Option<f64> {
+}
+
+impl Tracer for Sphere {
+	fn trace(&self, src: Vector, ray: Vector) -> Option<Vector> {
 		// Connects src with the center of self.
 		let a = self.center - src;
 		
@@ -93,17 +119,12 @@ impl Sphere {
 		
 		let d = 4.*k2*k2 + 4.*k1*(self.radius*self.radius - k3);
 		
-		// println!("{}", d);
-		
 		if d < 0. {
 			None
 		} else {
-			Some(2.*k2 - d.sqrt() / (2.*k1))
+			let k = (2.*k2 - d.sqrt()) / (2.*k1);
+			Some(ray * k)
 		}
-	}
-	
-	pub fn center(self) -> Vector {
-		self.center
 	}
 }
 
@@ -116,7 +137,12 @@ mod tests {
 	fn sphere_trace1() {
 		let src = Vector::new(0., 0., 0.);
 		let sphere = Sphere::new(Vector::new(1., 1., 0.), 1.);
-		let t = sphere.trace(src, Vector::new(0.1, 0.1, 0.)).unwrap();
-		assert!(t - 10. + 10./2.0f64.sqrt() < f64::EPSILON);
+
+		let v = sphere.trace(src, Vector::new(0.1, 0.1, 0.)).unwrap();
+
+		let xy = 1. - 1. / 2.0f64.sqrt();
+
+		assert!((v.x - xy).abs() < f64::EPSILON);
+		assert!((v.y - xy).abs() < f64::EPSILON);
 	}
 }

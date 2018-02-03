@@ -3,6 +3,7 @@ extern crate rustycg;
 
 use std::thread;
 use std::time::Duration;
+use std::f64;
 
 // use sdl2::rect::Point;
 use sdl2::pixels::Color;
@@ -36,32 +37,34 @@ fn main() {
 	canvas.set_draw_color(Color::RGB(0, 0, 0));
 	canvas.clear();
 	
-	canvas.set_draw_color(Color::RGB(0, 255, 0));
+	let origin = Vector::new(0., 0., 0.);
+	let base_ray = Vector::new(-0.25, 0.25, 1.);
 	
-	let camera_origin = Vector::new(0., 0., 0.);
-	let sphere = Sphere::new(Vector::new(0., 0., 2.), 1.);
+	let dw = -2. * base_ray.x / (w as f64);
+	let dh = 2. * base_ray.y / (h as f64);
 	
-	let dist = sphere.center().len();
-	
-	let frame_w = 2.;
-	let frame_h = 2.;
-	
-	let base_ray = Vector::new(-frame_w / 2., frame_h / 2., 1.);
-	
-	let dw = frame_w / (w as f64);
-	let dh = -frame_h / (h as f64);
+	let tracers: &[&Tracer] = &[
+		&Sphere::new(Vector::new(0., -1., 5.), 1.),
+		&Sphere::new(Vector::new(0., 1., 5.), 1.),
+		&Sphere::new(Vector::new(0., 0., 5.), 1.),
+	];
 	
 	for y in 0..h {
 		for x in 0..w {
-			let ray = base_ray +
-				Vector::new(dw * (x as f64), dh * (y as f64), 0.);
+			let ray = base_ray + 
+				Vector::new(dw * (x as f64), -dh * (y as f64), 0.);
 			
-			if let Some(k) = sphere.trace(camera_origin, ray) {
-				canvas.set_draw_color(
-					Color::RGB(0, (((dist - k) / dist) * 255.) as u8, 0));
-				
-				let _ = canvas.draw_point((x as i32, y as i32));
-			}
+			tracers.iter()
+				.filter_map(|tracer| tracer.trace(origin, ray))
+				.min_by(|v, u| v.len2().partial_cmp(&u.len2()).unwrap())
+				.map(|v| {
+					let intensity = 1.08f64.powf(-v.len2());
+					
+					canvas.set_draw_color(
+						Color::RGB(0, (intensity * 255.) as u8, 0));
+						
+					let _ = canvas.draw_point((x as i32, y as i32));
+				});
 		}
 	}
 	
